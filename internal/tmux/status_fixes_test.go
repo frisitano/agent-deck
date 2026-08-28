@@ -569,6 +569,26 @@ esc to interrupt`,
 	}
 }
 
+// Codex renders its active line above the always-visible composer and model
+// footer. It therefore falls outside Claude's last-three-row interrupt guard,
+// even though the pane visibly says it is working. Pin the live layout so both
+// status reporting and send confirmation see the session as active.
+func TestCodexWorkingLineAboveComposerIsBusy(t *testing.T) {
+	content := `• Working (30s • esc to interrupt) · 1 background terminal running
+
+
+› Ask Codex to do anything
+
+  gpt-5.6-sol high · ~/.agent-deck/worker-scratch/conductor-praxis
+
+
+`
+	sess := &Session{DisplayName: "codex-live-working", detectedTool: "codex"}
+	if !sess.hasBusyIndicator(content) {
+		t.Fatalf("Codex working line above composer must be busy\nContent:\n%s", content)
+	}
+}
+
 // =============================================================================
 // VALIDATION 5.0: thinkingPattern Requires Spinner Prefix
 // =============================================================================

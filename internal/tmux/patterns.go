@@ -74,6 +74,7 @@ func DefaultRawPatterns(toolName string) *RawPatterns {
 	case "codex":
 		return &RawPatterns{
 			BusyPatterns: []string{
+				`re:(?im)^\s*[•◦]?\s*Working\s*\([^\n]*\besc to interrupt\b`,
 				"ctrl+c to interrupt",
 				"esc to interrupt",
 				"press esc to interrupt",
