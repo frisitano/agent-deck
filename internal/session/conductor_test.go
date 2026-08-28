@@ -630,8 +630,11 @@ func TestConductorHeartbeatScript_StatusParsingHandlesWhitespace(t *testing.T) {
 	if !strings.Contains(conductorHeartbeatScript, `session send "$SESSION"`) {
 		t.Fatal("heartbeat script should send heartbeat messages")
 	}
-	if !strings.Contains(conductorHeartbeatScript, "--no-wait -q") {
-		t.Fatal("heartbeat script should use non-blocking quiet send")
+	if strings.Contains(conductorHeartbeatScript, "--no-wait") {
+		t.Fatal("heartbeat script must wait for prompt readiness")
+	}
+	if !strings.Contains(conductorHeartbeatScript, `session send "$SESSION" "$MSG" -q`) {
+		t.Fatal("heartbeat script should use readiness-aware quiet send")
 	}
 }
 

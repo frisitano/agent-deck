@@ -1263,7 +1263,7 @@ func buildDaemonPath(agentDeckPath string) string {
 // Uses grep -q and awk for JSON parsing to stay portable across GNU and BSD (macOS).
 const conductorHeartbeatScript = `#!/bin/bash
 # Heartbeat for conductor: {NAME} (profile: {PROFILE})
-# Sends a check-in message to the conductor session (non-blocking)
+# Sends a check-in message after the conductor is ready
 
 SESSION="conductor-{NAME}"
 PROFILE="{PROFILE}"
@@ -1304,7 +1304,7 @@ $RULES"
 fi
 
 if [ "$STATUS" = "idle" ] || [ "$STATUS" = "waiting" ]; then
-    agent-deck -p "$PROFILE" session send "$SESSION" "$MSG" --no-wait -q
+    agent-deck -p "$PROFILE" session send "$SESSION" "$MSG" -q
 fi
 `
 
