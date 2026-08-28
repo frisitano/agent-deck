@@ -3022,7 +3022,7 @@ func handleSessionSend(profile string, args []string) {
 // issue #876.
 func defaultSendOptions() sendRetryOptions {
 	return sendRetryOptions{
-		maxRetries:     50,
+		maxRetries:     100,
 		checkDelay:     300 * time.Millisecond,
 		verifyDelivery: true,
 	}
@@ -3744,8 +3744,8 @@ func sendWithRetryTarget(target sendRetryTarget, message string, skipVerify bool
 // the body first renders, especially while loading project instructions. Keep
 // the verification window long enough to observe that active transition; a
 // shorter window reports issue #1793 even though the turn starts immediately
-// afterward. At the default caller's 300ms checkDelay this is at most ~9s.
-const arrivalVerifyChecks = 30
+// afterward. At the default caller's 300ms checkDelay this is at most ~30s.
+const arrivalVerifyChecks = 100
 
 // arrivalSafeLineBytes is the longest LINE that no line discipline can lose,
 // and therefore the threshold above which an unconfirmed send is a failure

@@ -242,11 +242,14 @@ func TestIssue1793_LargePayload_IdleAgentGoingActiveIsSubmitted(t *testing.T) {
 // real accepted turn is not reported as typed-but-not-submitted.
 func TestIssue1793_LargePayload_SlowActiveTransitionIsSubmitted(t *testing.T) {
 	msg := bigMessage(4095)
-	statuses := make([]string, 17)
+	// Transition after the former 50-check (~15s) default budget. Production
+	// Codex sessions can spend longer than that loading a large heartbeat plus
+	// project instructions before their first visible busy render.
+	statuses := make([]string, 82)
 	for i := range statuses {
 		statuses[i] = "waiting"
 	}
-	statuses[16] = "active"
+	statuses[81] = "active"
 	mock := &mockSendRetryTarget{
 		statuses: statuses,
 		panes:    []string{"❯ \n", "❯ " + msg + "\n"},
