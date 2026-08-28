@@ -3679,6 +3679,23 @@ func (s *Session) CapturePaneFresh() (string, error) {
 	return content, nil
 }
 
+// PaneBusyFresh reports whether a fresh pane snapshot contains an explicit
+// busy indicator. Unlike GetStatus, it deliberately bypasses the window
+// activity fast path: a send can render the composer and the subsequent Codex
+// busy state within the same tmux activity-timestamp tick, leaving a
+// long-lived status tracker cached at waiting even though the pane is working.
+// Send-delivery verification uses this as a narrow confirmation signal.
+func (s *Session) PaneBusyFresh() (bool, error) {
+	rawContent, err := s.CapturePaneFresh()
+	if err != nil {
+		return false, err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.hasBusyIndicator(StripANSI(rawContent)), nil
+}
+
 // CaptureFullHistory captures the scrollback history (limited to last 2000 lines for performance)
 func (s *Session) CaptureFullHistory() (string, error) {
 	// Limit to last 2000 lines to balance content availability with memory usage

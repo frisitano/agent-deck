@@ -3794,6 +3794,33 @@ type sendArrivalBaseline struct {
 	statusOK bool
 }
 
+// freshPaneBusyReporter is an optional capability implemented by tmux.Session.
+// It closes a narrow status-cache race during send verification: the composer
+// render and the agent's busy render can share one tmux activity timestamp, so
+// repeated GetStatus calls on the same session object can remain "waiting".
+type freshPaneBusyReporter interface {
+	PaneBusyFresh() (bool, error)
+}
+
+// arrivalTargetActive reads the normal status first, then consults a fresh
+// pane when the target supports it. The bool pair is (active, observed): a
+// failed status and failed fresh capture is no baseline, never guessed state.
+func arrivalTargetActive(target sendRetryTarget) (bool, bool) {
+	status, statusErr := target.GetStatus()
+	if statusErr == nil && status == "active" {
+		return true, true
+	}
+	if reporter, ok := target.(freshPaneBusyReporter); ok {
+		if busy, err := reporter.PaneBusyFresh(); err == nil {
+			return busy, true
+		}
+	}
+	if statusErr == nil {
+		return false, true
+	}
+	return false, false
+}
+
 // captureArrivalBaseline snapshots the pane and status before a send. Each
 // signal records whether it was actually observed; a signal without a valid
 // baseline is disabled, never guessed.
@@ -3802,8 +3829,8 @@ func captureArrivalBaseline(target sendRetryTarget, message string) sendArrivalB
 	if n, markers, ok := paneArrivalObservation(target, message); ok {
 		base.occurrences, base.pasteMarkers, base.paneOK = n, markers, true
 	}
-	if status, err := target.GetStatus(); err == nil {
-		base.wasActive, base.statusOK = status == "active", true
+	if active, ok := arrivalTargetActive(target); ok {
+		base.wasActive, base.statusOK = active, true
 	}
 	return base
 }
@@ -3881,7 +3908,7 @@ func verifyContentArrival(target sendRetryTarget, message string, opts sendRetry
 		// Strongest signal first: an idle agent that starts working received
 		// what it started working on, which is submission, not just arrival.
 		if baseline.statusOK && !baseline.wasActive {
-			if status, err := target.GetStatus(); err == nil && status == "active" {
+			if active, ok := arrivalTargetActive(target); ok && active {
 				return deliverySubmitted, nil
 			}
 		}

@@ -4,10 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/asheshgoplani/agent-deck/internal/tmux"
 )
+
+type freshBusySendTarget struct {
+	*mockSendRetryTarget
+	busy    []bool
+	busyIdx atomic.Int32
+}
+
+func (m *freshBusySendTarget) PaneBusyFresh() (bool, error) {
+	i := int(m.busyIdx.Add(1) - 1)
+	if len(m.busy) == 0 {
+		return false, nil
+	}
+	if i >= len(m.busy) {
+		i = len(m.busy) - 1
+	}
+	return m.busy[i], nil
+}
 
 // ---------------------------------------------------------------------------
 // Issue #1793: `session send` returned {"success":true,"delivery":"unverified"}
@@ -237,6 +255,31 @@ func TestIssue1793_LargePayload_SlowActiveTransitionIsSubmitted(t *testing.T) {
 	delivery, err := sendWithRetryTarget(mock, msg, true, defaultSendOptions())
 	if err != nil {
 		t.Fatalf("slow active transition should still confirm submission: %v", err)
+	}
+	if delivery != deliverySubmitted {
+		t.Fatalf("delivery: want %q, got %q", deliverySubmitted, delivery)
+	}
+}
+
+// A long-lived tmux.Session can keep returning waiting when the composer and
+// Codex busy renders land in the same activity-timestamp tick. A fresh pane
+// busy signal is submission evidence even while that cached status is stale.
+func TestIssue1793_LargePayload_FreshBusyPaneOverridesStaleWaitingStatus(t *testing.T) {
+	msg := bigMessage(4095)
+	target := &freshBusySendTarget{
+		mockSendRetryTarget: &mockSendRetryTarget{
+			statuses: []string{"waiting"},
+			panes:    []string{"❯ \n", "❯ " + msg + "\n"},
+		},
+		// Baseline is idle; the second post-send sample visibly starts work.
+		busy: []bool{false, false, true},
+	}
+
+	delivery, err := sendWithRetryTarget(target, msg, true, sendRetryOptions{
+		maxRetries: 4, checkDelay: 0,
+	})
+	if err != nil {
+		t.Fatalf("fresh busy pane should confirm submission despite stale status: %v", err)
 	}
 	if delivery != deliverySubmitted {
 		t.Fatalf("delivery: want %q, got %q", deliverySubmitted, delivery)
