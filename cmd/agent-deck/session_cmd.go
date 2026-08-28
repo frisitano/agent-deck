@@ -3739,10 +3739,13 @@ func sendWithRetryTarget(target sendRetryTarget, message string, skipVerify bool
 // suitable for "did this body appear in the pane?" verification. Returns "" if
 // the message contains no usefully-distinctive token (e.g. all whitespace, or
 // only short common words).
-// arrivalVerifyChecks bounds the post-send content-arrival poll. The body
-// echoes into the pane as fast as the agent redraws, so this only has to
-// cover a redraw, not a reply: at the callers' 200ms checkDelay that is ~2s.
-const arrivalVerifyChecks = 10
+// arrivalVerifyChecks bounds the post-send content-arrival poll. Codex can
+// accept a large multi-line heartbeat and begin its turn several seconds after
+// the body first renders, especially while loading project instructions. Keep
+// the verification window long enough to observe that active transition; a
+// shorter window reports issue #1793 even though the turn starts immediately
+// afterward. At the default caller's 300ms checkDelay this is at most ~9s.
+const arrivalVerifyChecks = 30
 
 // arrivalSafeLineBytes is the longest LINE that no line discipline can lose,
 // and therefore the threshold above which an unconfirmed send is a failure

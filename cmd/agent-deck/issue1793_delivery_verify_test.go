@@ -218,6 +218,31 @@ func TestIssue1793_LargePayload_IdleAgentGoingActiveIsSubmitted(t *testing.T) {
 	}
 }
 
+// A large Codex heartbeat can render immediately but take several seconds to
+// transition the session to active while project instructions are loaded. The
+// arrival verifier must keep watching beyond the former ten-check window so a
+// real accepted turn is not reported as typed-but-not-submitted.
+func TestIssue1793_LargePayload_SlowActiveTransitionIsSubmitted(t *testing.T) {
+	msg := bigMessage(4095)
+	statuses := make([]string, 17)
+	for i := range statuses {
+		statuses[i] = "waiting"
+	}
+	statuses[16] = "active"
+	mock := &mockSendRetryTarget{
+		statuses: statuses,
+		panes:    []string{"❯ \n", "❯ " + msg + "\n"},
+	}
+
+	delivery, err := sendWithRetryTarget(mock, msg, true, defaultSendOptions())
+	if err != nil {
+		t.Fatalf("slow active transition should still confirm submission: %v", err)
+	}
+	if delivery != deliverySubmitted {
+		t.Fatalf("delivery: want %q, got %q", deliverySubmitted, delivery)
+	}
+}
+
 // TestIssue1793_AlreadyActiveAgent_IsNotEvidenceOfArrival is the second half
 // of the same trap as the leftover-copy test, and the more dangerous one: a
 // pane that was ALREADY working is still working a moment later whether or not
