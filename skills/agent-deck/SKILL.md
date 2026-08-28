@@ -353,6 +353,22 @@ agent-deck conductor list
 
 Each conductor lives at `~/.agent-deck/conductor/<name>/` (new installs: `$XDG_DATA_HOME/agent-deck/conductor/<name>/`, default `~/.local/share/agent-deck/conductor/<name>/`) with its own `CLAUDE.md` (or `AGENTS.md` for Codex), `meta.json`, `state.json`, and `task-log.md`. Multiple conductors per profile are supported and each can pair with its own bot.
 
+### Atlas scoped conductors
+
+For Atlas-managed conductors, Agent Deck is the persistent session and
+heartbeat transport; Atlas Oracle is the policy and lifecycle authority. Use
+the Oracle-generated heartbeat rules and run one authenticated
+`atlas-oracle agent conductor heartbeat` event at startup, restart, compaction,
+or uncertainty. The event rehydrates durable state and may dispatch only an
+immutable deferred plan that is both dependency-ready and on the approved,
+conflict-clear schedule. Roadmap readiness is never launch authority. Report
+waiting and hold reasons truthfully and do not add polling loops.
+
+Conductor setup and replacement are mutations. Keep the incumbent intact while
+validating a candidate's no-prompt profile, grant, schedule, boards,
+rehydration, and safe lifecycle fixture. Revocation, stop, removal, and rollback
+require explicit operator cutover approval.
+
 ### Channels (Telegram / Slack)
 
 Channels are how a conductor talks to you remotely. Each conductor pairs **one-to-one** with its own bot — bots are not shared. `agent-deck conductor setup` interactively walks you through Telegram or Slack pairing during creation.
