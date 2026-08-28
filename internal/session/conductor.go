@@ -1293,7 +1293,8 @@ for candidate in \
     fi
 done
 
-MSG="{HEARTBEAT_PREFIX} Check sessions in your group ({NAME}). List any that are waiting, auto-respond where safe, and report what needs my attention."
+HEARTBEAT_EVENT_ID="native-{NAME}-$(date -u +%Y%m%dT%H%M%SZ)"
+MSG="{HEARTBEAT_PREFIX} event-id=$HEARTBEAT_EVENT_ID boundary=uncertainty. Check sessions in your group ({NAME}). Use this exact event ID and boundary for the single Oracle heartbeat call. List any that are waiting, auto-respond where safe, and report what needs my attention."
 if [ -n "$RULES_FILE" ]; then
     RULES=$(cat "$RULES_FILE")
     if [ -n "$RULES" ]; then

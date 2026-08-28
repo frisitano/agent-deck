@@ -636,6 +636,12 @@ func TestConductorHeartbeatScript_StatusParsingHandlesWhitespace(t *testing.T) {
 	if !strings.Contains(conductorHeartbeatScript, `session send "$SESSION" "$MSG" -q`) {
 		t.Fatal("heartbeat script should use readiness-aware quiet send")
 	}
+	if !strings.Contains(conductorHeartbeatScript, `HEARTBEAT_EVENT_ID="native-{NAME}-$(date -u +%Y%m%dT%H%M%SZ)"`) {
+		t.Fatal("heartbeat script should stamp a replay-stable event id")
+	}
+	if !strings.Contains(conductorHeartbeatScript, "boundary=uncertainty") {
+		t.Fatal("periodic heartbeat should declare the uncertainty boundary")
+	}
 }
 
 // TestConductorHeartbeatScript_InjectsHeartbeatRules verifies parity with
