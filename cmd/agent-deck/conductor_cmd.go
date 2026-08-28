@@ -126,6 +126,9 @@ func yesAnswer(s string) bool { return s == "y" || s == "yes" }
 func handleConductorSetup(profile string, args []string) {
 	fs := flag.NewFlagSet("conductor setup", flag.ExitOnError)
 	agent := fs.String("agent", session.ConductorAgentClaude, "Conductor agent runtime (claude or codex)")
+	command := fs.String("command", "", "Exact command to persist before the conductor can start")
+	projectPath := fs.String("path", "", "Exact project path to persist before the conductor can start")
+	groupPath := fs.String("group", "", "Exact group path to persist before the conductor can start")
 	noClearOnCompact := fs.Bool("no-clear-on-compact", false, "Claude-only: allow normal compaction instead of /clear when context fills up")
 	description := fs.String("description", "", "Description for this conductor")
 	heartbeat := fs.Bool("heartbeat", false, "Enable heartbeat for this conductor (default)")
@@ -157,6 +160,12 @@ func handleConductorSetup(profile string, args []string) {
 		fmt.Println("        Conductor agent runtime: claude or codex (default \"claude\")")
 		fmt.Println("  -description string")
 		fmt.Println("        Description for this conductor")
+		fmt.Println("  -command string")
+		fmt.Println("        Exact command to persist before the conductor can start")
+		fmt.Println("  -path string")
+		fmt.Println("        Exact project path to persist before the conductor can start")
+		fmt.Println("  -group string")
+		fmt.Println("        Exact group path to persist before the conductor can start")
 		fmt.Println("  -heartbeat")
 		fmt.Println("        Enable heartbeat for this conductor (default)")
 		fmt.Println("  -no-heartbeat")
@@ -535,6 +544,18 @@ func handleConductorSetup(profile string, args []string) {
 
 	// Step 5: Register session in the profile's storage
 	sessionTitle := session.ConductorSessionTitle(name)
+	resolvedCommand := *command
+	if resolvedCommand == "" {
+		resolvedCommand = spec.DefaultCommand
+	}
+	resolvedProjectPath := *projectPath
+	if resolvedProjectPath == "" {
+		resolvedProjectPath, _ = session.ConductorNameDir(name)
+	}
+	resolvedGroupPath := *groupPath
+	if resolvedGroupPath == "" {
+		resolvedGroupPath = "conductor"
+	}
 	storage, err := session.NewStorageWithProfile(resolvedProfile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading storage for %s: %v\n", resolvedProfile, err)
@@ -566,16 +587,17 @@ func handleConductorSetup(profile string, args []string) {
 				continue
 			}
 			inst.Tool = spec.Agent
-			inst.Command = spec.DefaultCommand
+			inst.Command = resolvedCommand
+			inst.ProjectPath = resolvedProjectPath
+			inst.GroupPath = resolvedGroupPath
 			break
 		}
 		if !*jsonOutput {
 			fmt.Printf("  [ok] Session '%s' already registered and synced to %s (ID: %s)\n", sessionTitle, spec.Agent, existingID[:8])
 		}
 	} else {
-		dir, _ := session.ConductorNameDir(name)
-		newInst := session.NewInstanceWithGroupAndTool(sessionTitle, dir, "conductor", spec.Agent)
-		newInst.Command = spec.DefaultCommand
+		newInst := session.NewInstanceWithGroupAndTool(sessionTitle, resolvedProjectPath, resolvedGroupPath, spec.Agent)
+		newInst.Command = resolvedCommand
 		newInst.IsConductor = true
 		instances = append(instances, newInst)
 
@@ -588,6 +610,7 @@ func handleConductorSetup(profile string, args []string) {
 	// Always ensure conductor group is pinned to top
 	groupTree := session.NewGroupTreeWithGroups(instances, groups)
 	groupTree.DefaultMaxConcurrent = config.GroupDefaults.MaxConcurrent
+	groupTree.CreateGroupPath(resolvedGroupPath)
 	conductorGroup := groupTree.CreateGroup("conductor")
 	conductorGroup.Order = -1
 
